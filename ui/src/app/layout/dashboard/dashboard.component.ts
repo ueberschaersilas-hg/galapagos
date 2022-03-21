@@ -14,6 +14,9 @@ import * as moment from 'moment';
 import { TranslateService } from '@ngx-translate/core';
 import { ApplicationInfo, ApplicationsService } from '../../shared/services/applications.service';
 import { Location } from '@angular/common';
+import { Md5 } from 'ts-md5';
+
+
 
 @Component({
     selector: 'app-dashboard',
@@ -79,6 +82,22 @@ export class DashboardComponent implements OnInit {
         return moment(timestamp).locale(this.translate.currentLang).format('L LT');
     }
 
+    getImageLinkForUserWithNoOutlookImage(user: string): string {
+        const name = user.split('@')[0].replace('.','+');
+        return `https://ui-avatars.com/api/?name=${name}&background=random`;
+    }
+
+    getImageLinkForUserWithOutlookImage(user: string): string {
+        return `https://outlook.office365.com/owa/service.svc/s/GetPersonaPhoto?email=${user}&size=HR64x64`;
+    }
+
+    getGravtarImageLink(user: string): string {
+        const md5 = new Md5();
+        md5.appendStr(user.trim().toLowerCase());
+        const hash = md5.end();
+        return `https://www.gravatar.com/avatar/${hash}?d=identicon`;
+    }
+
     copyValueFromObservable(observer: Observable<string>) {
         const selBox = document.createElement('textarea');
         selBox.style.position = 'fixed';
@@ -103,7 +122,7 @@ export class DashboardComponent implements OnInit {
                 change.change.html = this.changeHtml(change.change);
                 return change;
             })
-            .filter(change => change.change.html !== null).slice(0, 10);
+            .filter(change => change.change.html !== null).slice(0, 100);
     }
 
     private changeHtml(change: Change): Observable<string> {
