@@ -116,9 +116,47 @@
         </div>
         <div class="col-md-8">
             <div class="card chat-panel">
+
                 <div class="card-header bg-secondary text-white">
-                    <i class="fa fa-hammer me-3"></i>{{ 'Latest Changes' | translate }}
+                    <div class="justify-content-between d-flex">
+                        <div>
+                            <i class="fa fa-hammer me-3"></i>{{ 'Latest Changes' | translate }}
+                        </div>
+                        <div>
+                            <i class="fa fa-filter pe-auto" role="button" (click)="lastChangesSettingsCollapsed = !lastChangesSettingsCollapsed"></i>
+                        </div>
+                    </div>
+
                 </div>
+                <!-- Last Changes Settings Tab -->
+                <div class="m-2" [ngbCollapse]="lastChangesSettingsCollapsed">
+                    <div class="d-flex justify-content-start align-items-center mb-3">
+                        <label style="margin-right: 1em">{{ 'Number of shown changes' | translate }}</label>
+                        <input class="form-control w-auto me-3 " name="topicName" size="80" type="number"
+                               spellcheck="false" [defaultValue]="this.amountOfEventsInChangelog" (change)="this.amountOfEventsInChangelog = $event.target.value">
+                    </div>
+                    <div class="form-check">
+                        <label class="form-check-label" for="subApprovalReq">
+                            {{ 'Show JSON-Schemas' | translate }}
+                        </label>
+                        <input
+                            class="form-check-input" type="checkbox"
+                            id="subApprovalReq" name="subApprovalReq" (change)="this.changeFilterSettings('JSON')"
+                            [checked]="this.getFilterSettings('JSON')">
+                    </div>
+                    <div class="form-check">
+                        <label class="form-check-label" for="subApprovalReq">
+                            {{ 'Show Subscriptions' | translate }}
+                        </label>
+                        <input
+                            class="form-check-input" type="checkbox" name="subApprovalReq" [checked]="true">
+                    </div>
+                    <button type="button" class="btn btn-success mt-3" (click)="applyFilter()">
+                        {{ 'Apply Filter' | translate }}
+                    </button>
+                    <hr/>
+                </div>
+
                 <div class="card-body">
                     <ul class="chat" *ngIf="(changelog | async)?.length">
                         <li class="left clearfix d-flex w-auto" *ngFor="let change of changelog | async">

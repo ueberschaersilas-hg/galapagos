@@ -9,7 +9,7 @@ import {
 } from '../../shared/services/environments.service';
 import { firstValueFrom, Observable, switchMap } from 'rxjs';
 import { flatMap, map, mergeMap, shareReplay, startWith, tap } from 'rxjs/operators';
-import { CustomLink, ServerInfo, ServerInfoService } from '../../shared/services/serverinfo.service';
+import { CustomLink, ServerInfo, ServerInfoService, UiConfig } from '../../shared/services/serverinfo.service';
 import { DateTime } from 'luxon';
 import { TranslateService } from '@ngx-translate/core';
 import { ApplicationInfo, ApplicationsService } from '../../shared/services/applications.service';
@@ -38,11 +38,23 @@ export class DashboardComponent implements OnInit {
 
     kafkaVersion: Observable<string>;
 
+    unfilteredChangelog: ChangelogEntry[];
+
     changelog: Observable<ChangelogEntry[]>;
 
     frameworkConfigTemplate: Observable<string>;
 
     configTemplatesCollapsed = true;
+
+    lastChangesSettingsCollapsed = true;
+
+    filterSettings: Map<string, boolean>;
+
+    amountOfEventsInChangelog: number;
+
+    minDays: number;
+
+    uiConfigObs:  Observable<UiConfig>;
 
     configTemplatesCopiedValue = false;
 
@@ -59,19 +71,35 @@ export class DashboardComponent implements OnInit {
         this.selectedEnvironment = environments.getCurrentEnvironment();
         this.serverInfos = environments.getCurrentEnvironmentServerInfo();
 
-        const uiConfigObs = this.serverInfoService.getUiConfig().pipe(shareReplay(1));
-        this.changelog = uiConfigObs.pipe(switchMap(config =>
+        this.uiConfigObs = this.serverInfoService.getUiConfig().pipe(shareReplay(1));
+        this.changelog = this.uiConfigObs.pipe(switchMap(config =>
             this.selectedEnvironment
                 .pipe(flatMap(env => this.environments.getChangeLog(env.id)))
                 .pipe(map(changes => this.formatChanges(changes, config.changelogEntries, config.changelogMinDays)))
                 .pipe(shareReplay(1))));
-        firstValueFrom(uiConfigObs).then(config => {
+        firstValueFrom(this.uiConfigObs).then(config => {
+            this.amountOfEventsInChangelog = config.changelogEntries;
+            this.minDays = config.changelogMinDays;
             this.changelogProfilePicture = config.profilePicture;
             this.changelogDefaultPicture = config.defaultPicture;
             this.customImageUrl = config.customImageUrl;
         });
 
-        this.customLinks = uiConfigObs.pipe(map(config => config.customLinks));
+        this.customLinks = this.uiConfigObs.pipe(map(config => config.customLinks));
+
+        this.filterSettings = new Map<string, boolean>([
+            ['TOPIC_CREATED', true],
+            ['TOPIC_DELETED', true],
+            ['TOPIC_UNDEPRECATED', true],
+            ['TOPIC_SCHEMA_VERSION_PUBLISHED', false],
+            ['TOPIC_SCHEMA_VERSION_DELETED', false],
+            ['TOPIC_DESCRIPTION_CHANGED', true],
+            ['TOPIC_SUBSCRIBED', true],
+            ['TOPIC_UNSUBSCRIBED', true],
+            ['TOPIC_PRODUCER_APPLICATION_ADDED', true],
+            ['TOPIC_SUBSCRIPTION_UPDATED', true],
+            ['TOPIC_DEPRECATED', true]
+        ]);
     }
 
     ngOnInit() {
@@ -144,15 +172,51 @@ export class DashboardComponent implements OnInit {
         this.configTemplatesCopiedValue = true;
     }
 
+    getFilterSettings(type: string) {
+        switch (type) {
+            case 'JSON':
+                return this.filterSettings.get('TOPIC_SCHEMA_VERSION_PUBLISHED');
+            case 'SUBSCRIPTIONS':
+                break;
+        }
+    }
+
+    changeFilterSettings(type: string) {
+        switch (type) {
+            case 'JSON':
+                const state = this.filterSettings.get('TOPIC_SCHEMA_VERSION_PUBLISHED');
+                this.filterSettings.set('TOPIC_SCHEMA_VERSION_PUBLISHED', !state);
+                this.filterSettings.set('TOPIC_SCHEMA_VERSION_DELETED', !state);
+                break;
+            case 'SUBSCRIPTIONS':
+                break;
+        }
+    }
+
+    applyFilter() {
+        this.changelog = this.uiConfigObs.pipe(switchMap(config =>
+            this.selectedEnvironment
+                .pipe(flatMap(env => this.environments.getChangeLog(env.id)))
+                .pipe(map(changes => this.formatChanges(changes, config.changelogEntries, config.changelogMinDays)))
+                .pipe(shareReplay(1))));
+    }
+
+    private filterChanges(change: ChangelogEntry) {
+        if (change.change.html === null) {
+            return false;
+        }
+        return this.filterSettings.get(change.change.changeType);
+    }
+
     private formatChanges(changes: ChangelogEntry[], amountOfEntries: number, minDays: number): ChangelogEntry[] {
+        this.unfilteredChangelog = [...changes];
         changes = changes
             .map(change => {
                 change.change.html = this.changeHtml(change.change);
                 change.profilePictureUrl = this.getProfilePicture(change.principal, 'profile');
                 change.defaultPictureUrl = this.getProfilePicture(change.principal, 'default');
                 return change;
-            }).filter(change => change.change.html !== null);
-
+            }).filter(change => this.filterChanges(change));
         // reduce matching JSON Schema Version add / delete until no matching pairs can be found
         let reducedChanges = [...changes];
         let hasReduced = false;
