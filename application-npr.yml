@@ -125,6 +125,8 @@
     }
   },
   "keycloak": {
+    "url": "http://localhost:8089",
+    "client.id": "galapagos-webapp-dev",
     "configurationFile": "file:./keycloak-npr.json"
   },
   "logging.level.org.apache.kafka": "INFO",
