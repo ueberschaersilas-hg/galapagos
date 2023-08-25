@@ -133,7 +133,8 @@
                     <div class="d-flex justify-content-start align-items-center mb-3">
                         <label style="margin-right: 1em">{{ 'Number of shown changes' | translate }}</label>
                         <input class="form-control w-auto me-3 " name="topicName" size="80" type="number"
-                               spellcheck="false" [defaultValue]="this.amountOfEventsInChangelog" (change)="this.amountOfEventsInChangelog = $event.target.value">
+                               spellcheck="false" [defaultValue]="this.amountOfEventsInChangelog"
+                               (change)="this.changeChangesAmountDisplayed($event.target.value)">
                     </div>
                     <div class="form-check">
                         <label class="form-check-label" for="subApprovalReq">
@@ -149,7 +150,9 @@
                             {{ 'Show Subscriptions' | translate }}
                         </label>
                         <input
-                            class="form-check-input" type="checkbox" name="subApprovalReq" [checked]="true">
+                            class="form-check-input" type="checkbox" name="subApprovalReq"
+                            (change)="this.changeFilterSettings('SUBSCRIPTIONS')"
+                            [checked]="this.getFilterSettings('SUBSCRIPTIONS')">
                     </div>
                     <button type="button" class="btn btn-success mt-3" (click)="applyFilter()">
                         {{ 'Apply Filter' | translate }}

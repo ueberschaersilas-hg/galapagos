@@ -72,18 +72,20 @@ export class DashboardComponent implements OnInit {
         this.serverInfos = environments.getCurrentEnvironmentServerInfo();
 
         this.uiConfigObs = this.serverInfoService.getUiConfig().pipe(shareReplay(1));
-        this.changelog = this.uiConfigObs.pipe(switchMap(config =>
-            this.selectedEnvironment
-                .pipe(flatMap(env => this.environments.getChangeLog(env.id)))
-                .pipe(map(changes => this.formatChanges(changes, config.changelogEntries, config.changelogMinDays)))
-                .pipe(shareReplay(1))));
+
         firstValueFrom(this.uiConfigObs).then(config => {
             this.amountOfEventsInChangelog = config.changelogEntries;
             this.minDays = config.changelogMinDays;
             this.changelogProfilePicture = config.profilePicture;
             this.changelogDefaultPicture = config.defaultPicture;
             this.customImageUrl = config.customImageUrl;
-        });
+        }).then(() => this.getLocalFilterSettings());
+
+        this.changelog = this.uiConfigObs.pipe(switchMap(config =>
+            this.selectedEnvironment
+                .pipe(flatMap(env => this.environments.getChangeLog(env.id)))
+                .pipe(map(changes => this.formatChanges(changes, this.amountOfEventsInChangelog, this.minDays)))
+                .pipe(shareReplay(1))));
 
         this.customLinks = this.uiConfigObs.pipe(map(config => config.customLinks));
 
@@ -172,32 +174,57 @@ export class DashboardComponent implements OnInit {
         this.configTemplatesCopiedValue = true;
     }
 
+    getLocalFilterSettings() {
+        const changesAmount = parseInt(localStorage.getItem('changesAmount'), 10);
+        if (changesAmount != null) {
+            this.amountOfEventsInChangelog = changesAmount;
+            console.log(this.amountOfEventsInChangelog);
+        }
+        const filterSettingsJSON = localStorage.getItem('filterSettings');
+        if (filterSettingsJSON) {
+            const filterSettingsObject = JSON.parse(filterSettingsJSON);
+            this.filterSettings = new Map(filterSettingsObject);
+            console.log(this.filterSettings);
+        }
+    }
+
     getFilterSettings(type: string) {
         switch (type) {
             case 'JSON':
                 return this.filterSettings.get('TOPIC_SCHEMA_VERSION_PUBLISHED');
             case 'SUBSCRIPTIONS':
-                break;
+                return this.filterSettings.get('TOPIC_SUBSCRIBED');
         }
     }
 
+    changeChangesAmountDisplayed(number: number) {
+        this.amountOfEventsInChangelog = number;
+        localStorage.setItem('changesAmount', number.toString());
+    }
+
     changeFilterSettings(type: string) {
+        let state = false;
         switch (type) {
             case 'JSON':
-                const state = this.filterSettings.get('TOPIC_SCHEMA_VERSION_PUBLISHED');
+                state = this.filterSettings.get('TOPIC_SCHEMA_VERSION_PUBLISHED');
                 this.filterSettings.set('TOPIC_SCHEMA_VERSION_PUBLISHED', !state);
                 this.filterSettings.set('TOPIC_SCHEMA_VERSION_DELETED', !state);
                 break;
             case 'SUBSCRIPTIONS':
+                state = this.filterSettings.get('TOPIC_SUBSCRIBED');
+                this.filterSettings.set('TOPIC_SUBSCRIBED', !state);
+                this.filterSettings.set('TOPIC_UNSUBSCRIBED', !state);
                 break;
         }
+        const filterSettingsJSON = JSON.stringify([...this.filterSettings]);
+        localStorage.setItem('filterSettings', filterSettingsJSON);
     }
 
     applyFilter() {
         this.changelog = this.uiConfigObs.pipe(switchMap(config =>
             this.selectedEnvironment
                 .pipe(flatMap(env => this.environments.getChangeLog(env.id)))
-                .pipe(map(changes => this.formatChanges(changes, config.changelogEntries, config.changelogMinDays)))
+                .pipe(map(changes => this.formatChanges(changes, this.amountOfEventsInChangelog, config.changelogMinDays)))
                 .pipe(shareReplay(1))));
     }
 
