@@ -178,13 +178,11 @@ export class DashboardComponent implements OnInit {
         const changesAmount = parseInt(localStorage.getItem('changesAmount'), 10);
         if (changesAmount != null) {
             this.amountOfEventsInChangelog = changesAmount;
-            console.log(this.amountOfEventsInChangelog);
         }
         const filterSettingsJSON = localStorage.getItem('filterSettings');
         if (filterSettingsJSON) {
             const filterSettingsObject = JSON.parse(filterSettingsJSON);
             this.filterSettings = new Map(filterSettingsObject);
-            console.log(this.filterSettings);
         }
     }
 
